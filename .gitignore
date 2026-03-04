@@ -1,0 +1,20 @@
+## Build output
+CarRentalSysV2/build/
+CarRentalSysV2/dist/
+
+## NetBeans private configuration
+CarRentalSysV2/nbproject/private/
+
+## Java compiled classes
+**/*.class
+
+## Logs
+*.log
+
+## OS-specific files
+.DS_Store
+Thumbs.db
+
+## Windows shortcuts
+*.lnk
+
