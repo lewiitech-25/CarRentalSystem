@@ -32,9 +32,17 @@ This repository contains a simple **Car Rental System** implemented in Java as a
 3. Navigate to the cloned folder and select the `CarRentalSysV2` project.
 4. Clean and build the project, then run the main class (typically `carrentalsystem.CarRentalSystem`).
 
+**Running from the command line**
+
+From the `CarRentalSysV2` directory:
+
+```bash
+javac -d build src\carrentalsystem\*.java src\frontend\*.java
+java -cp build carrentalsystem.CarRentalSystem
+```
+
 ### Contributing
 
-Contributions and suggestions are welcome. If you would like to extend the system (e.g., add database persistence, authentication, or a richer UI), feel free to fork the repository and open a pull request.
 
 ### License
 

@@ -1,9 +1,10 @@
 package frontend;
 
+import carrentalsystem.Booking;
 import carrentalsystem.Car;
 import carrentalsystem.Customer;
-import carrentalsystem.Booking;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 
@@ -21,6 +22,89 @@ public class DashboardService {
         this.cars = cars;
         this.customers = customers;
         this.bookings = bookings;
+    }
+
+    // --- Expose read-only views of underlying collections for UI dialogs ---
+
+    public List<Car> getCars() {
+        return Collections.unmodifiableList(cars);
+    }
+
+    public List<Customer> getCustomers() {
+        return Collections.unmodifiableList(customers);
+    }
+
+    public List<Booking> getBookings() {
+        return Collections.unmodifiableList(bookings);
+    }
+
+    // --- Car mutations ---
+
+    public void addCar(Car car) {
+        if (car != null) {
+            cars.add(car);
+        }
+    }
+
+    public void updateCar(Car updatedCar) {
+        if (updatedCar == null) {
+            return;
+        }
+        for (int i = 0; i < cars.size(); i++) {
+            Car existing = cars.get(i);
+            if (existing.getCarId().equals(updatedCar.getCarId())) {
+                cars.set(i, updatedCar);
+                break;
+            }
+        }
+    }
+
+    public void removeCar(String carId) {
+        if (carId == null) {
+            return;
+        }
+        cars.removeIf(car -> carId.equals(car.getCarId()));
+    }
+
+    // --- Customer mutations ---
+
+    public void addCustomer(Customer customer) {
+        if (customer != null) {
+            customers.add(customer);
+        }
+    }
+
+    public void updateCustomer(Customer updatedCustomer) {
+        if (updatedCustomer == null) {
+            return;
+        }
+        for (int i = 0; i < customers.size(); i++) {
+            Customer existing = customers.get(i);
+            if (existing.getCustomerId().equals(updatedCustomer.getCustomerId())) {
+                customers.set(i, updatedCustomer);
+                break;
+            }
+        }
+    }
+
+    public void removeCustomer(String customerId) {
+        if (customerId == null) {
+            return;
+        }
+        customers.removeIf(customer -> customerId.equals(customer.getCustomerId()));
+    }
+
+    // --- Booking mutations ---
+
+    public Booking createAndAddBooking(Customer customer, Car car, Date startDate, Date endDate) {
+        if (customer == null || car == null || startDate == null || endDate == null) {
+            return null;
+        }
+        Booking booking = Booking.createBooking(customer, car, startDate, endDate);
+        booking.calculateTotal(car.getPricePerDay());
+        booking.confirmBooking();
+        bookings.add(booking);
+        return booking;
     }
 
     public int getTotalCars() {

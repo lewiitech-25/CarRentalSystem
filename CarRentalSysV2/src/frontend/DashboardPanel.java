@@ -3,6 +3,7 @@ package frontend;
 import carrentalsystem.Booking;
 import java.awt.BorderLayout;
 import java.awt.GridLayout;
+import java.awt.Window;
 import java.text.NumberFormat;
 import java.text.SimpleDateFormat;
 import java.util.List;
@@ -12,6 +13,7 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.SwingConstants;
+import javax.swing.SwingUtilities;
 import javax.swing.table.DefaultTableModel;
 
 /**
@@ -30,6 +32,16 @@ public class DashboardPanel extends JPanel {
 
     public DashboardPanel(DashboardService service) {
         this.service = service;
+
+        // #region agent log
+        DebugLogger.log(
+                "DashboardPanel.java:37",
+                "DashboardPanel constructor start",
+                "H1",
+                "initial",
+                "service=" + (service != null)
+        );
+        // #endregion
 
         setLayout(new BorderLayout(10, 10));
 
@@ -62,7 +74,55 @@ public class DashboardPanel extends JPanel {
 
         add(buttonsPanel, BorderLayout.SOUTH);
 
-        refreshButton.addActionListener(e -> refreshData());
+        refreshButton.addActionListener(e -> {
+            // #region agent log
+            DebugLogger.log(
+                    "DashboardPanel.java:69",
+                    "Refresh button clicked",
+                    "H1",
+                    "initial",
+                    ""
+            );
+            // #endregion
+            refreshData();
+        });
+
+        newBookingButton.addActionListener(e -> {
+            // #region agent log
+            DebugLogger.log(
+                    "DashboardPanel.java:78",
+                    "New Booking button clicked",
+                    "H1",
+                    "initial",
+                    ""
+            );
+            // #endregion
+            openNewBookingDialog();
+        });
+        manageCarsButton.addActionListener(e -> {
+            // #region agent log
+            DebugLogger.log(
+                    "DashboardPanel.java:89",
+                    "Manage Cars button clicked",
+                    "H1",
+                    "initial",
+                    ""
+            );
+            // #endregion
+            openCarManagementDialog();
+        });
+        manageCustomersButton.addActionListener(e -> {
+            // #region agent log
+            DebugLogger.log(
+                    "DashboardPanel.java:100",
+                    "Manage Customers button clicked",
+                    "H1",
+                    "initial",
+                    ""
+            );
+            // #endregion
+            openCustomerManagementDialog();
+        });
 
         refreshData();
     }
@@ -78,6 +138,41 @@ public class DashboardPanel extends JPanel {
 
         parent.add(card);
         return valueLabel;
+    }
+
+    private Window getParentWindow() {
+        Window owner = SwingUtilities.getWindowAncestor(this);
+        // #region agent log
+        DebugLogger.log(
+                "DashboardPanel.java:93",
+                "getParentWindow",
+                "H2",
+                "initial",
+                "ownerIsNull=" + (owner == null)
+        );
+        // #endregion
+        return owner;
+    }
+
+    private void openNewBookingDialog() {
+        Window owner = getParentWindow();
+        NewBookingDialog dialog = new NewBookingDialog(owner, service);
+        dialog.setVisible(true);
+        refreshData();
+    }
+
+    private void openCarManagementDialog() {
+        Window owner = getParentWindow();
+        CarManagementDialog dialog = new CarManagementDialog(owner, service);
+        dialog.setVisible(true);
+        refreshData();
+    }
+
+    private void openCustomerManagementDialog() {
+        Window owner = getParentWindow();
+        CustomerManagementDialog dialog = new CustomerManagementDialog(owner, service);
+        dialog.setVisible(true);
+        refreshData();
     }
 
     public void refreshData() {
