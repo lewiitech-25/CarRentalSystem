@@ -1,6 +1,6 @@
 ## Car Rental System
 
-This repository contains a simple **Car Rental System** implemented in Java as a desktop application (NetBeans project). It demonstrates core object‑oriented concepts such as encapsulation, composition, and separation of concerns while modeling a real‑world car rental workflow.
+This repository contains a simple **Car Rental System** implemented in Java as a desktop application . It demonstrates core object‑oriented concepts such as encapsulation, composition, and separation of concerns while modeling a real‑world car rental workflow.
 
 ### Features
 
