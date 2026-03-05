@@ -10,10 +10,6 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
-    defaults:
-      run:
-        working-directory: CarRentalSysV2
-
     steps:
       - uses: actions/checkout@v4
 
@@ -23,5 +19,21 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - name: Compile Java files
-        run: javac *.java
+      - name: Show project structure
+        run: |
+          echo "Repo root:"
+          ls -la
+          echo "CarRentalSysV2:"
+          ls -la CarRentalSysV2 || true
+          echo "Java files found:"
+          find CarRentalSysV2 -name "*.java" -print || true
+
+      - name: Compile all Java files
+        run: |
+          mkdir -p out
+          find CarRentalSysV2 -name "*.java" > sources.txt
+          if [ ! -s sources.txt ]; then
+            echo "No Java files found inside CarRentalSysV2"
+            exit 1
+          fi
+          javac -d out @sources.txt
