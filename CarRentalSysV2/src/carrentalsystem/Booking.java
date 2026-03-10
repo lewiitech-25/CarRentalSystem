@@ -21,6 +21,7 @@ public class Booking {
     private Date endDate;
     private double totalAmount;
     private String status;     // e.g., "Pending", "Confirmed", "Cancelled"
+    private String paymentStatus; // e.g., "Unpaid", "Paid", "Failed"
     
     // This is used by the createBooking method to set up the object
     public Booking(String bookingId, String customerId, String carId, Date startDate, Date endDate) {
@@ -30,6 +31,7 @@ public class Booking {
         this.startDate = startDate;
         this.endDate = endDate;
         this.status = "Pending"; // New bookings always start as "Pending"
+        this.paymentStatus = "Unpaid";
         this.totalAmount = 0.0;  // We calculate this later
     }
     
@@ -58,6 +60,18 @@ public class Booking {
      */
     public void cancelBooking() {
         this.status = "Cancelled";
+    }
+
+    public void completeBooking() {
+        this.status = "Completed";
+    }
+
+    public void markAsPaid() {
+        this.paymentStatus = "Paid";
+    }
+
+    public void markPaymentFailed() {
+        this.paymentStatus = "Failed";
     }
     
     /**
@@ -100,6 +114,10 @@ public class Booking {
 
     public String getStatus() {
         return this.status;
+    }
+
+    public String getPaymentStatus() {
+        return this.paymentStatus;
     }
     
     public Date getStartDate() {

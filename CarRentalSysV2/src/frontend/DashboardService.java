@@ -107,6 +107,122 @@ public class DashboardService {
         return booking;
     }
 
+    public synchronized Booking createAndAddBooking(String bookingId, Customer customer, Car car, Date startDate, Date endDate) {
+        if (bookingId == null || bookingId.isBlank() || customer == null || car == null || startDate == null || endDate == null) {
+            return null;
+        }
+        Booking booking = new Booking(bookingId, customer.getCustomerId(), car.getCarId(), startDate, endDate);
+        booking.calculateTotal(car.getPricePerDay());
+        booking.confirmBooking();
+        bookings.add(booking);
+        car.setStatus("Rented");
+        return booking;
+    }
+
+    public synchronized Car findCarById(String carId) {
+        if (carId == null) {
+            return null;
+        }
+        for (Car car : cars) {
+            if (carId.equals(car.getCarId())) {
+                return car;
+            }
+        }
+        return null;
+    }
+
+    public synchronized Customer findCustomerById(String customerId) {
+        if (customerId == null) {
+            return null;
+        }
+        for (Customer customer : customers) {
+            if (customerId.equals(customer.getCustomerId())) {
+                return customer;
+            }
+        }
+        return null;
+    }
+
+    public synchronized Booking findBookingById(String bookingId) {
+        if (bookingId == null) {
+            return null;
+        }
+        for (Booking booking : bookings) {
+            if (bookingId.equals(booking.getBookingId())) {
+                return booking;
+            }
+        }
+        return null;
+    }
+
+    public synchronized boolean isCarAvailableForDates(String carId, Date startDate, Date endDate) {
+        if (carId == null || startDate == null || endDate == null) {
+            return false;
+        }
+        for (Booking booking : bookings) {
+            if (!"Confirmed".equals(booking.getStatus())) {
+                continue;
+            }
+            if (!carId.equals(booking.getCarId())) {
+                continue;
+            }
+            Date existingStart = booking.getStartDate();
+            Date existingEnd = booking.getEndDate();
+            boolean overlaps = !endDate.before(existingStart) && !startDate.after(existingEnd);
+            if (overlaps) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public synchronized boolean cancelBooking(String bookingId) {
+        Booking booking = findBookingById(bookingId);
+        if (booking == null || !"Confirmed".equals(booking.getStatus())) {
+            return false;
+        }
+        booking.cancelBooking();
+        syncCarStatus(booking.getCarId());
+        return true;
+    }
+
+    public synchronized boolean returnBooking(String bookingId) {
+        Booking booking = findBookingById(bookingId);
+        if (booking == null || !"Confirmed".equals(booking.getStatus())) {
+            return false;
+        }
+        booking.completeBooking();
+        syncCarStatus(booking.getCarId());
+        return true;
+    }
+
+    public synchronized void syncCarStatus(String carId) {
+        Car car = findCarById(carId);
+        if (car == null) {
+            return;
+        }
+        boolean hasConfirmed = false;
+        for (Booking booking : bookings) {
+            if ("Confirmed".equals(booking.getStatus()) && carId.equals(booking.getCarId())) {
+                hasConfirmed = true;
+                break;
+            }
+        }
+        car.setStatus(hasConfirmed ? "Rented" : "Available");
+    }
+
+    public synchronized boolean markBookingPaid(String bookingId) {
+        Booking booking = findBookingById(bookingId);
+        if (booking == null || !"Confirmed".equals(booking.getStatus())) {
+            return false;
+        }
+        if ("Paid".equals(booking.getPaymentStatus())) {
+            return false;
+        }
+        booking.markAsPaid();
+        return true;
+    }
+
     public int getTotalCars() {
         return cars.size();
     }
@@ -160,7 +276,7 @@ public class DashboardService {
     public double getTotalRevenue() {
         double total = 0.0;
         for (Booking booking : bookings) {
-            if ("Confirmed".equals(booking.getStatus())) {
+            if ("Confirmed".equals(booking.getStatus()) && "Paid".equals(booking.getPaymentStatus())) {
                 total += booking.getTotalAmount();
             }
         }
@@ -180,4 +296,3 @@ public class DashboardService {
         return result;
     }
 }
-

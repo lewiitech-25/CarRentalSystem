@@ -66,6 +66,10 @@ public class Payment {
         return this.status;
     }
 
+    public String getPaymentMethod() {
+        return this.paymentMethod;
+    }
+
     public Date getTimestamp() {
         return this.timestamp;
     }
