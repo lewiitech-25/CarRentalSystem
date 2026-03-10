@@ -57,12 +57,20 @@ public class Car {
         return this.model;
     }
 
+    public int getYear() {
+        return this.year;
+    }
+
     public String getCategory() {
         return this.category;
     }
 
     public double getPricePerDay() {
         return this.pricePerDay;
+    }
+
+    public String getLicensePlate() {
+        return this.licensePlate;
     }
 
     public String getStatus() {
