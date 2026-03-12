@@ -20,9 +20,9 @@ This repository contains a simple **Car Rental System** implemented in Java as a
 **Prerequisites**
 
 - Java Development Kit (JDK) 8+ installed.
-- NetBeans (or any Java IDE capable of opening standard Ant‑based Java projects).
+- react,firebase
 
-**Running the project in NetBeans**
+**Running the projects
 
 1. Clone this repository:
    ```bash
@@ -37,8 +37,7 @@ This repository contains a simple **Car Rental System** implemented in Java as a
 From the `CarRentalSysV2` directory:
 
 ```bash
-javac -d build src\carrentalsystem\*.java src\frontend\*.java
-java -cp build carrentalsystem.CarRentalSystem
+
 ```
 
 ### Contributing
