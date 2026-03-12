@@ -14,6 +14,57 @@ body {
   background: transparent;
 }
 
+.auth-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 1.2rem;
+  background:
+    radial-gradient(circle at 90% 10%, rgba(43, 129, 215, 0.28), transparent 35%),
+    radial-gradient(circle at 10% 90%, rgba(35, 210, 199, 0.22), transparent 40%),
+    linear-gradient(170deg, #08111d, #060d17);
+}
+
+.auth-card {
+  width: min(430px, 100%);
+  border: 1px solid rgba(122, 177, 224, 0.26);
+  border-radius: 20px;
+  padding: 1.25rem;
+  background: linear-gradient(180deg, rgba(12, 26, 44, 0.88), rgba(10, 18, 31, 0.85));
+}
+
+.auth-card h2 {
+  margin: 0;
+}
+
+.auth-subtext {
+  margin: 0.5rem 0 0;
+  color: #9cbad3;
+  font-size: 0.92rem;
+}
+
+.auth-form {
+  margin-top: 0.8rem;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.auth-switch {
+  margin-top: 0.65rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.55rem;
+}
+
+.auth-tab {
+  width: 100%;
+}
+
+.active-mode {
+  border-color: rgba(110, 184, 255, 0.45);
+  background: rgba(22, 49, 74, 0.5);
+}
+
 .marketing-page {
   min-height: 100vh;
   padding: 1.2rem;
