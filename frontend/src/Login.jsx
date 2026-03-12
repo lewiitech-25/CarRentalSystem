@@ -1,0 +1,118 @@
+import { useEffect, useState } from 'react';
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  updateProfile
+} from 'firebase/auth';
+import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { auth, db } from './firebase';
+
+function Login({ initialMode = 'login', onBack }) {
+  const [mode, setMode] = useState(initialMode);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
+
+  useEffect(() => {
+    setMode(initialMode);
+  }, [initialMode]);
+
+  async function handleAuth(selectedMode) {
+    try {
+      setMode(selectedMode);
+      setBusy(true);
+      setError('');
+      setMessage('');
+
+      if (!email || !password) {
+        setError('Fill in all required fields.');
+        return;
+      }
+
+      if (selectedMode === 'signup') {
+        const derivedName = email.split('@')[0] || 'User';
+        const credentials = await createUserWithEmailAndPassword(auth, email, password);
+        await updateProfile(credentials.user, { displayName: derivedName });
+        await setDoc(
+          doc(db, 'users', credentials.user.uid),
+          {
+            name: derivedName,
+            email,
+            role: 'user',
+            createdAt: serverTimestamp()
+          },
+          { merge: true }
+        );
+
+        setMessage('Account created. You are now signed in as a user.');
+        return;
+      }
+
+      await signInWithEmailAndPassword(auth, email, password);
+    } catch (err) {
+      setError(err.message || 'Authentication failed.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <main className="auth-page">
+      <section className="auth-card">
+        <p className="marketing-logo">DriveDesk</p>
+        <h2>{mode === 'login' ? 'Sign in' : 'Create account'}</h2>
+        <p className="auth-subtext">
+          {mode === 'login'
+            ? 'Login with your email and password.'
+            : 'New accounts are created as user role. Admin role must be assigned in Firestore.'}
+        </p>
+
+        {error && <p className="status error">{error}</p>}
+        {message && <p className="status success">{message}</p>}
+
+        <form className="auth-form" onSubmit={(e) => e.preventDefault()}>
+          <input
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+        </form>
+        <div className="auth-switch">
+          <button
+            type="button"
+            className={mode === 'login' ? 'ghost auth-tab active-mode' : 'ghost auth-tab'}
+            disabled={busy}
+            onClick={() => handleAuth('login')}
+          >
+            {busy && mode === 'login' ? 'Please wait...' : 'Login'}
+          </button>
+          <button
+            type="button"
+            className={mode === 'signup' ? 'ghost auth-tab active-mode' : 'ghost auth-tab'}
+            disabled={busy}
+            onClick={() => handleAuth('signup')}
+          >
+            {busy && mode === 'signup' ? 'Please wait...' : 'Sign up'}
+          </button>
+        </div>
+        {onBack && (
+          <button type="button" className="ghost back-home" onClick={onBack}>
+            Back to Site
+          </button>
+        )}
+      </section>
+    </main>
+  );
+}
+
+export default Login;

@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
+import Login from './Login';
 import landingCarImage from './assets/landing-car.jpg';
 import carHireImage from './assets/car-hire.jpg';
+import { auth, db } from './firebase';
 
 const currency = new Intl.NumberFormat('en-US', {
   style: 'currency',
@@ -32,13 +36,13 @@ const NAV_ITEMS = [
   { id: 'admin', label: 'Admin', roles: ['admin'] }
 ];
 
-function MarketingHome({ onEnterApp }) {
+function MarketingHome({ onLogin, onSignup }) {
   return (
     <main className="marketing-page">
       <header className="marketing-nav">
         <p className="marketing-logo">DriveDesk</p>
-        <button type="button" className="marketing-cta" onClick={() => onEnterApp('user')}>
-          Enter as User
+        <button type="button" className="marketing-cta" onClick={onSignup}>
+          Sign up
         </button>
       </header>
 
@@ -51,11 +55,11 @@ function MarketingHome({ onEnterApp }) {
             built for speed.
           </p>
           <div className="hero-actions">
-            <button type="button" className="marketing-cta" onClick={() => onEnterApp('user')}>
-              Enter as User
+            <button type="button" className="marketing-cta" onClick={onLogin}>
+              Login
             </button>
-            <button type="button" className="marketing-cta ghost-cta" onClick={() => onEnterApp('admin')}>
-              Enter as Admin
+            <button type="button" className="marketing-cta ghost-cta" onClick={onSignup}>
+              Sign up
             </button>
             <span className="hero-note">Set up in minutes and start taking bookings.</span>
           </div>
@@ -96,6 +100,9 @@ function MarketingHome({ onEnterApp }) {
 }
 
 export default function App() {
+  const [authView, setAuthView] = useState('home');
+  const [authReady, setAuthReady] = useState(false);
+  const [authUser, setAuthUser] = useState(null);
   const [role, setRole] = useState(null);
   const [activeView, setActiveView] = useState('dashboard');
   const [loading, setLoading] = useState(true);
@@ -115,6 +122,42 @@ export default function App() {
   const [userCustomerId, setUserCustomerId] = useState('');
 
   useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      setAuthUser(currentUser);
+      setError('');
+      setMessage('');
+      setActiveView('dashboard');
+
+      if (!currentUser) {
+        setRole(null);
+        setCars([]);
+        setCustomers([]);
+        setBookings([]);
+        setUserCustomerId('');
+        setLoading(false);
+        setAuthReady(true);
+        return;
+      }
+
+      try {
+        const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+        const resolvedRole = userDoc.data()?.role;
+        if (resolvedRole !== 'admin' && resolvedRole !== 'user') {
+          throw new Error('Your account has no valid role. Set role in Firestore users/{uid}.');
+        }
+        setRole(resolvedRole);
+      } catch (err) {
+        setRole(null);
+        setError(err.message || 'Could not determine user role.');
+      } finally {
+        setAuthReady(true);
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
     if (role) {
       loadAll();
     }
@@ -128,20 +171,31 @@ export default function App() {
     }
   }, [navItems, activeView]);
 
+  const roleCustomers = useMemo(() => {
+    if (role !== 'user') {
+      return customers;
+    }
+    const email = authUser?.email?.toLowerCase();
+    if (!email) {
+      return [];
+    }
+    return customers.filter((customer) => customer.email?.toLowerCase() === email);
+  }, [role, authUser, customers]);
+
   useEffect(() => {
     if (role !== 'user') {
       return;
     }
-    if (customers.length === 0) {
+    if (roleCustomers.length === 0) {
       setUserCustomerId('');
       return;
     }
-    if (!userCustomerId || !customers.some((customer) => customer.customerId === userCustomerId)) {
-      const firstCustomerId = customers[0].customerId;
+    if (!userCustomerId || !roleCustomers.some((customer) => customer.customerId === userCustomerId)) {
+      const firstCustomerId = roleCustomers[0].customerId;
       setUserCustomerId(firstCustomerId);
       setBookingForm((prev) => ({ ...prev, customerId: firstCustomerId }));
     }
-  }, [role, customers, userCustomerId]);
+  }, [role, roleCustomers, userCustomerId]);
 
   const availableCars = useMemo(() => cars.filter((car) => car.status === 'Available'), [cars]);
 
@@ -430,17 +484,45 @@ export default function App() {
     return Math.max(diff, 1);
   }
 
-  function enterApp(selectedRole) {
-    setRole(selectedRole);
-    setActiveView('dashboard');
+  async function handleLogout() {
+    await signOut(auth);
+    setAuthView('home');
+    setRole(null);
     setUserCustomerId('');
     setBookingForm({ customerId: '', carId: '', days: 1 });
     setError('');
     setMessage('');
   }
 
+  if (!authReady) {
+    return (
+      <main className="auth-page">
+        <section className="auth-card">
+          <p className="status">Checking session...</p>
+        </section>
+      </main>
+    );
+  }
+
+  if (!authUser) {
+    if (authView === 'login') {
+      return <Login initialMode="login" onBack={() => setAuthView('home')} />;
+    }
+    if (authView === 'signup') {
+      return <Login initialMode="signup" onBack={() => setAuthView('home')} />;
+    }
+    return <MarketingHome onLogin={() => setAuthView('login')} onSignup={() => setAuthView('signup')} />;
+  }
+
   if (!role) {
-    return <MarketingHome onEnterApp={enterApp} />;
+    return (
+      <main className="auth-page">
+        <section className="auth-card">
+          <p className="status error">{error || 'No valid role found for this account.'}</p>
+          <button type="button" onClick={handleLogout}>Sign Out</button>
+        </section>
+      </main>
+    );
   }
 
   return (
@@ -465,9 +547,10 @@ export default function App() {
         </nav>
 
         <div className="side-meta">
+          <p>{authUser.email}</p>
           <p>Cars: {dashboard.totalCars}</p>
           <p>Available: {dashboard.availableCarsToday}</p>
-          <button type="button" className="ghost back-home" onClick={() => setRole(null)}>Back to Site</button>
+          <button type="button" className="ghost back-home" onClick={handleLogout}>Logout</button>
         </div>
       </aside>
 
@@ -596,7 +679,7 @@ export default function App() {
                         }}
                       >
                         <option value="">Select your profile</option>
-                        {customers.map((c) => (
+                        {roleCustomers.map((c) => (
                           <option key={c.customerId} value={c.customerId}>{c.customerId} - {c.name}</option>
                         ))}
                       </select>
@@ -622,6 +705,11 @@ export default function App() {
 
                     <button type="submit" disabled={busy}>Create Booking</button>
                   </form>
+                  {role === 'user' && roleCustomers.length === 0 && (
+                    <p className="status error">
+                      No customer profile matches this login email. Add a customer with email {authUser.email}.
+                    </p>
+                  )}
                 </section>
 
                 <section className="panel">
