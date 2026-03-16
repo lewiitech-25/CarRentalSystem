@@ -45,33 +45,21 @@ function MarketingHome({ onLogin, onSignup }) {
           Sign up
         </button>
       </header>
-
       <section className="hero-section">
         <div className="hero-copy">
           <p className="eyebrow">Modern Rental Operations</p>
           <h1>Run your car rental business in one clean workspace.</h1>
-          <p>
-            DriveDesk handles bookings, fleet tracking, customer records, and admin actions with a dashboard
-            built for speed.
-          </p>
+          <p>DriveDesk handles bookings, fleet tracking, customer records, and admin actions with a dashboard built for speed.</p>
           <div className="hero-actions">
-            <button type="button" className="marketing-cta" onClick={onLogin}>
-              Login
-            </button>
-            <button type="button" className="marketing-cta ghost-cta" onClick={onSignup}>
-              Sign up
-            </button>
+            <button type="button" className="marketing-cta" onClick={onLogin}>Login</button>
+            <button type="button" className="marketing-cta ghost-cta" onClick={onSignup}>Sign up</button>
             <span className="hero-note">Set up in minutes and start taking bookings.</span>
           </div>
           <img className="hero-inline-image" src={carHireImage} alt="Customer picking up a rental car" />
         </div>
-
         <div className="hero-card-grid">
           <article className="hero-image-card">
-            <img
-              src={landingCarImage}
-              alt="Happy customer picking up a rental car"
-            />
+            <img src={landingCarImage} alt="Happy customer picking up a rental car" />
           </article>
           <div className="hero-features">
             <article>
@@ -89,7 +77,6 @@ function MarketingHome({ onLogin, onSignup }) {
           </div>
         </div>
       </section>
-
       <section className="marketing-strip">
         <article><strong>Dashboard</strong><span>Real-time cards and operational metrics.</span></article>
         <article><strong>Fleet</strong><span>Status-aware inventory with searchable records.</span></article>
@@ -153,7 +140,6 @@ export default function App() {
         setAuthReady(true);
       }
     });
-
     return () => unsubscribe();
   }, []);
 
@@ -172,24 +158,15 @@ export default function App() {
   }, [navItems, activeView]);
 
   const roleCustomers = useMemo(() => {
-    if (role !== 'user') {
-      return customers;
-    }
+    if (role !== 'user') return customers;
     const email = authUser?.email?.toLowerCase();
-    if (!email) {
-      return [];
-    }
+    if (!email) return [];
     return customers.filter((customer) => customer.email?.toLowerCase() === email);
   }, [role, authUser, customers]);
 
   useEffect(() => {
-    if (role !== 'user') {
-      return;
-    }
-    if (roleCustomers.length === 0) {
-      setUserCustomerId('');
-      return;
-    }
+    if (role !== 'user') return;
+    if (roleCustomers.length === 0) { setUserCustomerId(''); return; }
     if (!userCustomerId || !roleCustomers.some((customer) => customer.customerId === userCustomerId)) {
       const firstCustomerId = roleCustomers[0].customerId;
       setUserCustomerId(firstCustomerId);
@@ -207,48 +184,35 @@ export default function App() {
     const totalRevenue = bookings
       .filter((b) => b.status === 'Confirmed' && b.paymentStatus === 'Paid')
       .reduce((sum, b) => sum + Number(b.totalAmount || 0), 0);
-
     return { totalCars, totalCustomers, activeBookingsToday, availableCarsToday, totalRevenue };
   }, [cars, customers, bookings, availableCars]);
 
   const filteredCars = useMemo(() => {
     const needle = search.trim().toLowerCase();
-    if (!needle) {
-      return cars;
-    }
+    if (!needle) return cars;
     return cars.filter((c) => `${c.carId} ${c.make} ${c.model} ${c.category}`.toLowerCase().includes(needle));
   }, [cars, search]);
 
   const filteredCustomers = useMemo(() => {
     const needle = search.trim().toLowerCase();
-    if (!needle) {
-      return customers;
-    }
+    if (!needle) return customers;
     return customers.filter((c) => `${c.customerId} ${c.name} ${c.email} ${c.phone}`.toLowerCase().includes(needle));
   }, [customers, search]);
 
   const filteredBookings = useMemo(() => {
     const needle = search.trim().toLowerCase();
-    if (!needle) {
-      return bookings;
-    }
+    if (!needle) return bookings;
     return bookings.filter((b) => `${b.bookingId} ${b.customerId} ${b.carId} ${b.status}`.toLowerCase().includes(needle));
   }, [bookings, search]);
 
   const visibleBookings = useMemo(() => {
-    if (role !== 'user') {
-      return filteredBookings;
-    }
-    if (!userCustomerId) {
-      return [];
-    }
+    if (role !== 'user') return filteredBookings;
+    if (!userCustomerId) return [];
     return filteredBookings.filter((booking) => booking.customerId === userCustomerId);
   }, [role, filteredBookings, userCustomerId]);
 
   const userBookings = useMemo(() => {
-    if (!userCustomerId) {
-      return [];
-    }
+    if (!userCustomerId) return [];
     return bookings.filter((booking) => booking.customerId === userCustomerId);
   }, [bookings, userCustomerId]);
 
@@ -259,7 +223,6 @@ export default function App() {
       .filter((booking) => booking.status === 'Confirmed' && booking.paymentStatus !== 'Paid')
       .reduce((sum, booking) => sum + Number(booking.totalAmount || 0), 0);
     const myPaidBookings = userBookings.filter((booking) => booking.paymentStatus === 'Paid').length;
-
     return { myTotalBookings, myActiveBookings, myUnpaidAmount, myPaidBookings };
   }, [userBookings]);
 
@@ -267,18 +230,15 @@ export default function App() {
     const res = await fetch(url, options);
     const text = await res.text();
     let data = null;
-
     try {
       data = text ? JSON.parse(text) : null;
     } catch {
       data = null;
     }
-
     if (!res.ok) {
       const msg = data?.error || `Request failed (${res.status})`;
       throw new Error(msg);
     }
-
     return data;
   }
 
@@ -291,9 +251,27 @@ export default function App() {
         fetchJson('/api/customers'),
         fetchJson('/api/bookings')
       ]);
-      setCars(carsData || []);
-      setCustomers(customersData || []);
-      setBookings(bookingsData || []);
+      setCars((carsData?.cars || carsData || []).map(c => ({
+        ...c,
+        carId: c.id || c.carId,
+        pricePerDay: parseFloat(c.price_per_day || c.pricePerDay || 0),
+        status: (c.status === 'available' || c.status === 'Available') ? 'Available' : c.status
+      })));
+      setCustomers((customersData || []).map(c => ({
+        ...c,
+        customerId: c.customerId || c.id
+      })));
+      setBookings((bookingsData?.bookings || bookingsData || []).map(b => ({
+        ...b,
+        bookingId: b.id || b.bookingId,
+        customerId: b.customer_id || b.customerId,
+        carId: b.car_id || b.carId,
+        totalAmount: parseFloat(b.total_amount || b.totalAmount || 0),
+        status: b.status === 'confirmed' ? 'Confirmed' : b.status === 'cancelled' ? 'Cancelled' : b.status === 'pending' ? 'Pending' : b.status,
+        paymentStatus: b.payment_status || b.paymentStatus || 'Unpaid',
+        startDate: b.start_date || b.startDate,
+        endDate: b.end_date || b.endDate
+      })));
     } catch (err) {
       setError(err.message || 'Could not load data right now.');
     } finally {
@@ -307,12 +285,10 @@ export default function App() {
       setError('Fill all required car fields.');
       return;
     }
-
     try {
       setBusy(true);
       setError('');
       setMessage('');
-
       await fetchJson('/api/cars', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -321,11 +297,10 @@ export default function App() {
           model: carForm.model,
           year: Number(carForm.year),
           category: carForm.category,
-          pricePerDay: Number(carForm.pricePerDay),
-          licensePlate: carForm.licensePlate
+          price_per_day: Number(carForm.pricePerDay),
+          license_plate: carForm.licensePlate
         })
       });
-
       setCarForm(INITIAL_CAR_FORM);
       setMessage('Car added.');
       await loadAll();
@@ -342,12 +317,10 @@ export default function App() {
       setError('Fill all required customer fields.');
       return;
     }
-
     try {
       setBusy(true);
       setError('');
       setMessage('');
-
       await fetchJson('/api/customers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -358,7 +331,6 @@ export default function App() {
           licenseNumber: customerForm.licenseNumber
         })
       });
-
       setCustomerForm(INITIAL_CUSTOMER_FORM);
       setMessage('Customer added.');
       await loadAll();
@@ -375,12 +347,10 @@ export default function App() {
       setError('Select a customer and an available car.');
       return;
     }
-
     try {
       setBusy(true);
       setError('');
       setMessage('');
-
       await fetchJson('/api/bookings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -390,7 +360,6 @@ export default function App() {
           days: Number(bookingForm.days) || 1
         })
       });
-
       setBookingForm((prev) => ({ ...prev, carId: '', days: 1 }));
       setMessage('Booking created.');
       await loadAll();
@@ -406,13 +375,11 @@ export default function App() {
       setBusy(true);
       setError('');
       setMessage('');
-
       await fetchJson('/api/bookings/cancel', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ bookingId })
       });
-
       setMessage('Booking cancelled.');
       await loadAll();
     } catch (err) {
@@ -427,13 +394,11 @@ export default function App() {
       setBusy(true);
       setError('');
       setMessage('');
-
       await fetchJson('/api/bookings/return', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ bookingId })
       });
-
       setMessage('Booking marked as returned.');
       await loadAll();
     } catch (err) {
@@ -449,13 +414,11 @@ export default function App() {
       setBusy(true);
       setError('');
       setMessage('');
-
       await fetchJson('/api/payments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ bookingId, paymentMethod })
       });
-
       setMessage('Payment completed.');
       await loadAll();
     } catch (err) {
@@ -475,9 +438,7 @@ export default function App() {
   }
 
   function getRentalDays(booking) {
-    if (!booking?.startDate || !booking?.endDate) {
-      return '-';
-    }
+    if (!booking?.startDate || !booking?.endDate) return '-';
     const start = new Date(booking.startDate);
     const end = new Date(booking.endDate);
     const diff = Math.ceil((end.getTime() - start.getTime()) / (24 * 60 * 60 * 1000));
@@ -505,12 +466,8 @@ export default function App() {
   }
 
   if (!authUser) {
-    if (authView === 'login') {
-      return <Login initialMode="login" onBack={() => setAuthView('home')} />;
-    }
-    if (authView === 'signup') {
-      return <Login initialMode="signup" onBack={() => setAuthView('home')} />;
-    }
+    if (authView === 'login') return <Login initialMode="login" onBack={() => setAuthView('home')} />;
+    if (authView === 'signup') return <Login initialMode="signup" onBack={() => setAuthView('home')} />;
     return <MarketingHome onLogin={() => setAuthView('login')} onSignup={() => setAuthView('signup')} />;
   }
 
@@ -532,7 +489,6 @@ export default function App() {
           <p className="brand-title">DriveDesk</p>
           <p className="brand-sub">{role === 'admin' ? 'Admin Console' : 'User Console'}</p>
         </div>
-
         <nav className="side-nav">
           {navItems.map((item) => (
             <button
@@ -545,7 +501,6 @@ export default function App() {
             </button>
           ))}
         </nav>
-
         <div className="side-meta">
           <p>{authUser.email}</p>
           <p>Cars: {dashboard.totalCars}</p>
@@ -560,7 +515,6 @@ export default function App() {
             <h1>{navItems.find((i) => i.id === activeView)?.label}</h1>
             <p>Manage bookings, customers, and fleet operations in one place.</p>
           </div>
-
           <div className="search-wrap">
             <input
               placeholder="Search cars, customers, bookings"
@@ -596,7 +550,6 @@ export default function App() {
                     </>
                   )}
                 </div>
-
                 <section className="panel">
                   <h2>Available Cars</h2>
                   <div className="car-list">
@@ -684,7 +637,6 @@ export default function App() {
                         ))}
                       </select>
                     )}
-
                     <select
                       value={bookingForm.carId}
                       onChange={(e) => setBookingForm((p) => ({ ...p, carId: e.target.value }))}
@@ -694,7 +646,6 @@ export default function App() {
                         <option key={c.carId} value={c.carId}>{c.carId} - {c.make} {c.model}</option>
                       ))}
                     </select>
-
                     <input
                       placeholder="Hire days"
                       type="number"
@@ -702,7 +653,6 @@ export default function App() {
                       value={bookingForm.days}
                       onChange={(e) => setBookingForm((p) => ({ ...p, days: e.target.value }))}
                     />
-
                     <button type="submit" disabled={busy}>Create Booking</button>
                   </form>
                   {role === 'user' && roleCustomers.length === 0 && (
@@ -782,9 +732,7 @@ export default function App() {
                         </tr>
                       ))}
                       {visibleBookings.length === 0 && (
-                        <tr>
-                          <td colSpan="8">No bookings found for this profile.</td>
-                        </tr>
+                        <tr><td colSpan="8">No bookings found for this profile.</td></tr>
                       )}
                     </tbody>
                   </table>
@@ -806,7 +754,6 @@ export default function App() {
                     <button type="submit" disabled={busy}>Add Car</button>
                   </form>
                 </section>
-
                 <section className="panel">
                   <h2>Add Customer</h2>
                   <form className="form-grid" onSubmit={addCustomer}>

@@ -1,4 +1,3 @@
-// server.js — DriveDesk Car Rental System Backend
 require('dotenv').config();
 const express    = require('express');
 const cors       = require('cors');
@@ -8,10 +7,11 @@ const initDatabase = require('./config/init');
 const app  = express();
 const PORT = process.env.PORT || 5000;
 
-// ── CORS ──────────────────────────────────────────────────────────────────────
+// CORS
 const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:5173',
+  'http://localhost:5174',
   'https://car-rental-ke.vercel.app',
   process.env.FRONTEND_URL
 ].filter(Boolean);
@@ -24,19 +24,18 @@ app.use(cors({
   credentials: true
 }));
 
-// ── BODY PARSING ──────────────────────────────────────────────────────────────
+// BODY PARSING
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// ── RATE LIMITING (NFR-04) ───────────────────────────────────────────────────
+// RATE LIMITING
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
+  windowMs: 15 * 60 * 1000,
   max: 100,
   standardHeaders: true,
   legacyHeaders: false,
   message: { message: 'Too many requests, please try again later.' }
 });
-// Stricter limit for auth endpoints
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 20,
@@ -47,14 +46,15 @@ app.use('/api/', limiter);
 app.use('/api/auth/login',    authLimiter);
 app.use('/api/auth/register', authLimiter);
 
-// ── ROUTES ────────────────────────────────────────────────────────────────────
-app.use('/api/auth',     require('./routes/auth'));
-app.use('/api/cars',     require('./routes/cars'));
-app.use('/api/bookings', require('./routes/bookings'));
-app.use('/api/payments', require('./routes/payments'));
-app.use('/api/users',    require('./routes/users'));
+// ROUTES
+app.use('/api/auth',      require('./routes/auth'));
+app.use('/api/cars',      require('./routes/cars'));
+app.use('/api/bookings',  require('./routes/bookings'));
+app.use('/api/payments',  require('./routes/payments'));
+app.use('/api/users',     require('./routes/users'));
+app.use('/api/customers', require('./routes/customers'));
 
-// ── HEALTH CHECK ──────────────────────────────────────────────────────────────
+// HEALTH CHECK
 app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
@@ -68,34 +68,34 @@ app.get('/', (req, res) => {
   res.json({
     message: 'DriveDesk Car Rental System API',
     version: '1.0.0',
-    group: 'Group 11 — APT4080A',
+    group: 'Group 11 - APT4080A',
     docs: '/health',
-    endpoints: ['/api/auth', '/api/cars', '/api/bookings', '/api/payments', '/api/users']
+    endpoints: ['/api/auth', '/api/cars', '/api/bookings', '/api/payments', '/api/users', '/api/customers']
   });
 });
 
-// ── 404 HANDLER ───────────────────────────────────────────────────────────────
+// 404 HANDLER
 app.use((req, res) => {
   res.status(404).json({ message: `Route ${req.method} ${req.path} not found.` });
 });
 
-// ── GLOBAL ERROR HANDLER ──────────────────────────────────────────────────────
+// GLOBAL ERROR HANDLER
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);
   res.status(500).json({ message: 'An unexpected error occurred.' });
 });
 
-// ── START ─────────────────────────────────────────────────────────────────────
+// START
 async function start() {
   try {
     await initDatabase();
     app.listen(PORT, () => {
-      console.log(`🚗 DriveDesk API running on port ${PORT}`);
-      console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-      console.log(`📋 Health: http://localhost:${PORT}/health\n`);
+      console.log(`DriveDesk API running on port ${PORT}`);
+      console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`Health: http://localhost:${PORT}/health\n`);
     });
   } catch (err) {
-    console.error('❌ Failed to start server:', err.message);
+    console.error('Failed to start server:', err.message);
     console.error('Make sure MySQL is running and DB credentials in .env are correct.');
     process.exit(1);
   }
@@ -103,4 +103,4 @@ async function start() {
 
 start();
 
-module.exports = app; // for tests
+module.exports = app;
