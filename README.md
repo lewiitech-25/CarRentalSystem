@@ -1,11 +1,13 @@
 ## Car Rental System
 
-This repository contains a simple **Car Rental System** implemented in Java as a desktop application . It demonstrates core object‑oriented concepts such as encapsulation, composition, and separation of concerns while modeling a real‑world car rental workflow.
+This repository contains a simple **Car Rental System** implemented in Java as a desktop application . It replaces manual record-keeping with an automated system that handles fleet tracking, customer records, and real-time booking management. It demonstrates core object‑oriented concepts such as encapsulation, composition, and separation of concerns while modeling a real‑world car rental workflow.
 
 ### Features
 
-- **Car management**: maintain a list of cars that can be rented.
-- **Customer management**: basic customer representation and linkage to bookings.
+- **Role-Based Dashboards**: Tailored workspaces for Administrators (high-level metrics) and Users (personal booking management).
+- **Live Fleet Visibility**: Real-time tracking of "Available" vs. "Rented" vehicle status.
+-  **Customer Workspace**: Centralized profile management for faster booking launches.
+-  **Secure Authentication**: User sessions and role verification powered by Firebase Auth and Firestore.
 - **Bookings**: create, confirm, cancel, and calculate the total amount for bookings based on rental duration.
 - **Payments**: simple payment and payment gateway abstractions.
 
