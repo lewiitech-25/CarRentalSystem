@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import Login from './Login';
+import PaystackPay from './PaystackPay';
 import landingCarImage from './assets/landing-car.jpg';
 import carHireImage from './assets/car-hire.jpg';
 import { auth, db } from './firebase';
@@ -61,26 +62,156 @@ function MarketingHome({ onLogin, onSignup }) {
           <article className="hero-image-card">
             <img src={landingCarImage} alt="Happy customer picking up a rental car" />
           </article>
-          <div className="hero-features">
+          <section className="operations-panel">
+            <div className="operations-header">
+              <p className="eyebrow">Operations Snapshot</p>
+              <h3>Rental activity without the spreadsheet chaos.</h3>
+            </div>
+
+            <div className="operations-grid">
+              <article>
+                <span>Bookings</span>
+                <strong>Live confirmations</strong>
+                <p>Create, pay, and track rentals from one workflow.</p>
+              </article>
+              <article>
+                <span>Fleet</span>
+                <strong>Status-aware inventory</strong>
+                <p>Know what is available, active, returned, or overdue at a glance.</p>
+              </article>
+            </div>
+
+            <div className="operations-points">
+              <article>
+                <strong>Customers book for themselves</strong>
+                <p>Sign up, choose a car, pay, and see booking status without admin back-and-forth.</p>
+              </article>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <section className="why-section">
+        <div className="why-card">
+          <div className="why-copy">
+            <p className="eyebrow">Why Choose Us</p>
+            <h2>Built for rental teams that need fewer steps and clearer visibility.</h2>
+            <p>
+              DriveDesk keeps the customer journey simple while still giving operators the controls they need behind
+              the scenes. Instead of burying work under disconnected forms, it keeps the rental lifecycle readable.
+            </p>
+          </div>
+
+          <div className="why-list">
             <article>
-              <h3>Live Booking Control</h3>
-              <p>Create and cancel bookings instantly while availability updates in real time.</p>
+              <strong>Faster booking flow</strong>
+              <p>Users sign up, get linked to their own profile, and start hiring cars without waiting for admin setup.</p>
             </article>
             <article>
-              <h3>Fleet Visibility</h3>
-              <p>Track rented vs available cars and view rates across your fleet listings.</p>
+              <strong>Role-based control</strong>
+              <p>Admins manage fleet, payments, and customer records, while users only see the actions relevant to them.</p>
             </article>
             <article>
-              <h3>Customer Workspace</h3>
-              <p>Manage customer profiles and launch bookings directly from a unified panel.</p>
+              <strong>Integrated payments</strong>
+              <p>Paystack checkout keeps payment status visible inside the same booking history users already understand.</p>
+            </article>
+            <article>
+              <strong>Operational clarity</strong>
+              <p>Availability, active rentals, overdue returns, and booking records stay inside one connected loop.</p>
             </article>
           </div>
         </div>
       </section>
+<<<<<<< HEAD
       <section className="marketing-strip">
         <article><strong>Dashboard</strong><span>Real-time cards and operational metrics.</span></article>
         <article><strong>Fleet</strong><span>Status-aware inventory with searchable records.</span></article>
         <article><strong>Admin</strong><span>Quick forms for adding cars and customers.</span></article>
+=======
+
+      <section className="process-section">
+        <div className="process-intro">
+          <p className="eyebrow">How It Works</p>
+          <h2>From signup to return, every stage stays obvious.</h2>
+        </div>
+
+        <div className="process-flow">
+          <article className="process-row">
+            <div className="process-text">
+              <span className="process-index">01</span>
+              <h3>Self-serve onboarding</h3>
+              <p>
+                A user creates an account, gets connected to a matching customer record, and enters the system ready
+                to book without admin hand-holding.
+              </p>
+              <div className="process-tags">
+                <span>Account linked</span>
+                <span>Customer ready</span>
+                <span>Role-aware access</span>
+              </div>
+            </div>
+            <div className="process-visual">
+              <div className="visual-shell">
+                <strong>Account Ready</strong>
+                <p>Name, email, and booking identity stay connected to the same login.</p>
+              </div>
+            </div>
+          </article>
+
+          <article className="process-row reverse">
+            <div className="process-text">
+              <span className="process-index">02</span>
+              <h3>Choose, pay, confirm</h3>
+              <p>
+                Users pick an available car, set rental days clearly, and move through Paystack checkout without
+                leaving the booking context behind.
+              </p>
+              <div className="process-tags">
+                <span>Availability first</span>
+                <span>Secure payment</span>
+                <span>Visible status</span>
+              </div>
+            </div>
+            <div className="process-visual meter-visual">
+              <div className="meter-card">
+                <label>Vehicle matched</label>
+                <div><span style={{ width: '84%' }} /></div>
+              </div>
+              <div className="meter-card">
+                <label>Payment verified</label>
+                <div><span style={{ width: '91%' }} /></div>
+              </div>
+              <div className="meter-card">
+                <label>Booking confirmed</label>
+                <div><span style={{ width: '87%' }} /></div>
+              </div>
+            </div>
+          </article>
+
+          <article className="process-row">
+            <div className="process-text">
+              <span className="process-index">03</span>
+              <h3>Track the rental lifecycle</h3>
+              <p>
+                Teams can monitor active bookings, spot what is due back, and mark returns with less ambiguity and
+                fewer missed handoffs.
+              </p>
+              <div className="process-tags">
+                <span>Due-back visibility</span>
+                <span>Return actions</span>
+                <span>Shared records</span>
+              </div>
+            </div>
+            <div className="process-visual timeline-visual">
+              <div className="timeline-node active">Booked</div>
+              <div className="timeline-line" />
+              <div className="timeline-node active">Paid</div>
+              <div className="timeline-line" />
+              <div className="timeline-node">Returned</div>
+            </div>
+          </article>
+        </div>
+>>>>>>> cf23647 (Improve landing page, auth flow, and Paystack booking payments)
       </section>
     </main>
   );
@@ -105,8 +236,8 @@ export default function App() {
   const [carForm, setCarForm] = useState(INITIAL_CAR_FORM);
   const [customerForm, setCustomerForm] = useState(INITIAL_CUSTOMER_FORM);
   const [bookingForm, setBookingForm] = useState({ customerId: '', carId: '', days: 1 });
-  const [paymentMethodByBooking, setPaymentMethodByBooking] = useState({});
   const [userCustomerId, setUserCustomerId] = useState('');
+  const [provisioningProfile, setProvisioningProfile] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -149,6 +280,57 @@ export default function App() {
     }
   }, [role]);
 
+  useEffect(() => {
+    if (!authReady || !authUser) {
+      return;
+    }
+
+    const url = new URL(window.location.href);
+    const reference = url.searchParams.get('reference') || url.searchParams.get('trxref');
+    const isPaystackCallback = url.searchParams.get('paystack') === 'callback';
+    if (!isPaystackCallback || !reference) {
+      return;
+    }
+
+    let ignore = false;
+
+    async function verifyPayment() {
+      try {
+        setBusy(true);
+        setError('');
+        setMessage('Verifying Paystack payment...');
+
+        const result = await fetchJson(`/api/payments/verify?reference=${encodeURIComponent(reference)}`);
+        if (ignore) {
+          return;
+        }
+
+        setMessage(result.alreadyPaid ? 'Payment already verified.' : 'Paystack payment verified.');
+        await loadAll();
+      } catch (err) {
+        if (ignore) {
+          return;
+        }
+        setError(err.message || 'Could not verify Paystack payment.');
+      } finally {
+        if (ignore) {
+          return;
+        }
+        setBusy(false);
+        url.searchParams.delete('paystack');
+        url.searchParams.delete('reference');
+        url.searchParams.delete('trxref');
+        window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
+      }
+    }
+
+    verifyPayment();
+
+    return () => {
+      ignore = true;
+    };
+  }, [authReady, authUser]);
+
   const navItems = useMemo(() => NAV_ITEMS.filter((item) => item.roles.includes(role)), [role]);
 
   useEffect(() => {
@@ -163,6 +345,69 @@ export default function App() {
     if (!email) return [];
     return customers.filter((customer) => customer.email?.toLowerCase() === email);
   }, [role, authUser, customers]);
+
+  const linkedCustomer = useMemo(() => {
+    if (role !== 'user' || !userCustomerId) {
+      return null;
+    }
+    return roleCustomers.find((customer) => customer.customerId === userCustomerId) || null;
+  }, [role, roleCustomers, userCustomerId]);
+
+  useEffect(() => {
+    if (role !== 'user' || !authUser?.email || loading || provisioningProfile) {
+      return;
+    }
+    if (roleCustomers.length > 0) {
+      return;
+    }
+
+    let ignore = false;
+
+    async function provisionCustomerProfile() {
+      try {
+        setProvisioningProfile(true);
+        setBusy(true);
+        setError('');
+        setMessage('Setting up your customer profile...');
+
+        const fallbackName = authUser.displayName || authUser.email.split('@')[0] || 'Customer';
+        await fetchJson('/api/customers', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: fallbackName,
+            email: authUser.email,
+            phone: 'Pending Update',
+            licenseNumber: 'Pending Update'
+          })
+        });
+
+        if (ignore) {
+          return;
+        }
+
+        setMessage('Your customer profile is ready. You can now book a car.');
+        await loadAll();
+      } catch (err) {
+        if (ignore) {
+          return;
+        }
+        setError(err.message || 'Could not set up your customer profile.');
+      } finally {
+        if (ignore) {
+          return;
+        }
+        setProvisioningProfile(false);
+        setBusy(false);
+      }
+    }
+
+    provisionCustomerProfile();
+
+    return () => {
+      ignore = true;
+    };
+  }, [authUser, loading, provisioningProfile, role, roleCustomers]);
 
   useEffect(() => {
     if (role !== 'user') return;
@@ -408,11 +653,23 @@ export default function App() {
     }
   }
 
-  async function payForBooking(bookingId) {
-    const paymentMethod = paymentMethodByBooking[bookingId] || 'Card';
+  function resolveBookingEmail(booking) {
+    const customer = customers.find((entry) => entry.customerId === booking.customerId);
+    if (customer?.email) {
+      return customer.email;
+    }
+    return authUser?.email || '';
+  }
+
+  function buildPaystackReference(bookingId) {
+    return `${bookingId}-${Date.now()}`;
+  }
+
+  async function verifyPaystackPayment(reference) {
     try {
       setBusy(true);
       setError('');
+<<<<<<< HEAD
       setMessage('');
       await fetchJson('/api/payments', {
         method: 'POST',
@@ -420,9 +677,15 @@ export default function App() {
         body: JSON.stringify({ bookingId, paymentMethod })
       });
       setMessage('Payment completed.');
+=======
+      setMessage('Verifying Paystack payment...');
+
+      const result = await fetchJson(`/api/payments/verify?reference=${encodeURIComponent(reference)}`);
+      setMessage(result.alreadyPaid ? 'Payment already verified.' : 'Paystack payment verified.');
+>>>>>>> cf23647 (Improve landing page, auth flow, and Paystack booking payments)
       await loadAll();
     } catch (err) {
-      setError(err.message || 'Could not process payment.');
+      setError(err.message || 'Could not verify Paystack payment.');
     } finally {
       setBusy(false);
     }
@@ -611,6 +874,9 @@ export default function App() {
               <div className="content-grid">
                 <section className="panel">
                   <h2>Create Booking</h2>
+                  {role === 'user' && !linkedCustomer && (
+                    <p className="status">Setting up your customer profile...</p>
+                  )}
                   <form className="form-grid" onSubmit={createBooking}>
                     {role === 'admin' ? (
                       <select
@@ -623,19 +889,14 @@ export default function App() {
                         ))}
                       </select>
                     ) : (
-                      <select
-                        value={userCustomerId}
-                        onChange={(e) => {
-                          const selectedId = e.target.value;
-                          setUserCustomerId(selectedId);
-                          setBookingForm((p) => ({ ...p, customerId: selectedId }));
-                        }}
-                      >
-                        <option value="">Select your profile</option>
-                        {roleCustomers.map((c) => (
-                          <option key={c.customerId} value={c.customerId}>{c.customerId} - {c.name}</option>
-                        ))}
-                      </select>
+                      <div className="locked-field">
+                        <strong>{linkedCustomer ? linkedCustomer.name : authUser.email}</strong>
+                        <span>
+                          {linkedCustomer
+                            ? `${linkedCustomer.customerId} • ${linkedCustomer.email}`
+                            : 'Your customer profile is being created automatically'}
+                        </span>
+                      </div>
                     )}
                     <select
                       value={bookingForm.carId}
@@ -653,13 +914,13 @@ export default function App() {
                       value={bookingForm.days}
                       onChange={(e) => setBookingForm((p) => ({ ...p, days: e.target.value }))}
                     />
+<<<<<<< HEAD
                     <button type="submit" disabled={busy}>Create Booking</button>
+=======
+
+                    <button type="submit" disabled={busy || (role === 'user' && !linkedCustomer)}>Create Booking</button>
+>>>>>>> cf23647 (Improve landing page, auth flow, and Paystack booking payments)
                   </form>
-                  {role === 'user' && roleCustomers.length === 0 && (
-                    <p className="status error">
-                      No customer profile matches this login email. Add a customer with email {authUser.email}.
-                    </p>
-                  )}
                 </section>
 
                 <section className="panel">
@@ -686,27 +947,14 @@ export default function App() {
                           <td>{currency.format(booking.totalAmount)}</td>
                           <td>
                             <div className="row-actions">
-                              <select
-                                value={paymentMethodByBooking[booking.bookingId] || 'Card'}
-                                onChange={(e) =>
-                                  setPaymentMethodByBooking((prev) => ({
-                                    ...prev,
-                                    [booking.bookingId]: e.target.value
-                                  }))
-                                }
+                              <PaystackPay
+                                email={resolveBookingEmail(booking)}
+                                amount={booking.totalAmount}
+                                reference={buildPaystackReference(booking.bookingId)}
+                                className="paystack-button"
                                 disabled={busy || booking.status !== 'Confirmed' || booking.paymentStatus === 'Paid'}
-                              >
-                                <option value="Card">Card</option>
-                                <option value="Mpesa">Mpesa</option>
-                                <option value="Cash">Cash</option>
-                              </select>
-                              <button
-                                type="button"
-                                disabled={busy || booking.status !== 'Confirmed' || booking.paymentStatus === 'Paid'}
-                                onClick={() => payForBooking(booking.bookingId)}
-                              >
-                                Pay
-                              </button>
+                                onSuccess={(reference) => verifyPaystackPayment(reference?.reference || reference)}
+                              />
                               {role === 'admin' && (
                                 <button
                                   type="button"

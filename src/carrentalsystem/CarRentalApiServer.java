@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
+import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Date;
@@ -26,15 +27,15 @@ public class CarRentalApiServer {
     private static final Pattern JSON_PAIR_PATTERN = Pattern.compile("\\\"([^\\\"]+)\\\"\\s*:\\s*(\\\"((?:\\\\.|[^\\\"])*)\\\"|[^,}\\s]+)");
 
     private final DashboardService service;
-    private final PaymentGateway paymentGateway;
+    private final PaystackGateway paystackGateway;
 
     public CarRentalApiServer(DashboardService service) {
-        this(service, new PaymentGateway("Gateway 1", "Gateway API"));
+        this(service, new PaystackGateway(resolvePaystackSecretKey()));
     }
 
-    public CarRentalApiServer(DashboardService service, PaymentGateway paymentGateway) {
+    public CarRentalApiServer(DashboardService service, PaystackGateway paystackGateway) {
         this.service = service;
-        this.paymentGateway = paymentGateway;
+        this.paystackGateway = paystackGateway;
     }
 
     public static void main(String[] args) throws IOException {
@@ -63,6 +64,7 @@ public class CarRentalApiServer {
         System.out.println("POST /api/bookings/cancel");
         System.out.println("POST /api/bookings/return");
         System.out.println("POST /api/payments");
+        System.out.println("GET  /api/payments/verify?reference=...");
     }
 
     public void start(int port) throws IOException {
@@ -211,7 +213,7 @@ public class CarRentalApiServer {
             protected String handlePost(HttpExchange exchange) throws IOException {
                 Map<String, String> body = parseRequestBody(exchange);
                 String bookingId = requireField(body, "bookingId");
-                String paymentMethod = defaultIfBlank(body.get("paymentMethod"), "Card");
+                String payerEmail = resolvePaymentEmail(body.get("email"), bookingId);
 
                 DashboardService currentService = getService();
                 Booking booking = currentService.findBookingById(bookingId);
@@ -225,18 +227,72 @@ public class CarRentalApiServer {
                     throw new ApiException(409, "Booking is already paid");
                 }
 
-                Payment payment = paymentGateway.makePayment(booking, paymentMethod);
-                boolean success = paymentGateway.processPayment(payment);
-                if (!success) {
-                    booking.markPaymentFailed();
-                    throw new ApiException(402, "Payment failed");
+                String reference = bookingId + "-" + System.currentTimeMillis();
+                String callbackUrl = defaultIfBlank(body.get("callbackUrl"), buildPaystackCallbackUrl(exchange));
+                String metadataJson = "{"
+                        + "\"bookingId\":\"" + escape(bookingId) + "\","
+                        + "\"customerId\":\"" + escape(booking.getCustomerId()) + "\""
+                        + "}";
+
+                PaystackGateway.InitializeResult initialized = paystackGateway.initializeTransaction(
+                        payerEmail,
+                        toMinorUnits(booking.getTotalAmount()),
+                        reference,
+                        callbackUrl,
+                        "KES",
+                        metadataJson
+                );
+
+                return "{"
+                        + "\"bookingId\":\"" + escape(bookingId) + "\","
+                        + "\"paymentMethod\":\"Paystack\","
+                        + "\"reference\":\"" + escape(initialized.getReference()) + "\","
+                        + "\"accessCode\":\"" + escape(initialized.getAccessCode()) + "\","
+                        + "\"authorizationUrl\":\"" + escape(initialized.getAuthorizationUrl()) + "\""
+                        + "}";
+            }
+        });
+
+        server.createContext("/api/payments/verify", new JsonHandler() {
+            @Override
+            protected String handleGet(HttpExchange exchange) throws IOException {
+                Map<String, String> query = parseQuery(exchange.getRequestURI().getRawQuery());
+                String reference = requireField(query, "reference");
+                String bookingId = extractBookingIdFromReference(reference);
+
+                DashboardService currentService = getService();
+                Booking booking = currentService.findBookingById(bookingId);
+                if (booking == null) {
+                    throw new ApiException(404, "Booking not found for reference");
                 }
+                if ("Paid".equals(booking.getPaymentStatus())) {
+                    return "{"
+                            + "\"bookingId\":\"" + escape(bookingId) + "\","
+                            + "\"reference\":\"" + escape(reference) + "\","
+                            + "\"status\":\"success\","
+                            + "\"alreadyPaid\":true"
+                            + "}";
+                }
+
+                PaystackGateway.VerifyResult verified = paystackGateway.verifyTransaction(reference);
+                if (!"success".equalsIgnoreCase(verified.getStatus())) {
+                    booking.markPaymentFailed();
+                    throw new ApiException(409, "Paystack payment was not successful.");
+                }
+                if (!"KES".equalsIgnoreCase(defaultIfBlank(verified.getCurrency(), "KES"))) {
+                    throw new ApiException(409, "Unexpected Paystack currency.");
+                }
+                if (verified.getAmount() != toMinorUnits(booking.getTotalAmount())) {
+                    throw new ApiException(409, "Paystack amount does not match booking total.");
+                }
+
                 currentService.markBookingPaid(bookingId);
                 return "{"
-                        + "\"paymentId\":\"" + escape(payment.getPaymentId()) + "\","
-                        + "\"bookingId\":\"" + escape(payment.getBookingId()) + "\","
-                        + "\"status\":\"" + escape(payment.getStatus()) + "\","
-                        + "\"paymentMethod\":\"" + escape(payment.getPaymentMethod()) + "\""
+                        + "\"bookingId\":\"" + escape(bookingId) + "\","
+                        + "\"reference\":\"" + escape(verified.getReference()) + "\","
+                        + "\"status\":\"" + escape(verified.getStatus()) + "\","
+                        + "\"channel\":\"" + escape(defaultIfBlank(verified.getChannel(), "unknown")) + "\","
+                        + "\"gatewayResponse\":\"" + escape(defaultIfBlank(verified.getGatewayResponse(), "Payment verified")) + "\""
                         + "}";
             }
         });
@@ -321,6 +377,36 @@ public class CarRentalApiServer {
             }
         }
         return "B" + String.format("%04d", max + 1);
+    }
+
+    private String resolvePaymentEmail(String providedEmail, String bookingId) {
+        if (providedEmail != null && !providedEmail.isBlank()) {
+            return providedEmail.trim();
+        }
+        Booking booking = getService().findBookingById(bookingId);
+        if (booking != null) {
+            Customer customer = getService().findCustomerById(booking.getCustomerId());
+            if (customer != null && customer.getEmail() != null && !customer.getEmail().isBlank()) {
+                return customer.getEmail().trim();
+            }
+        }
+        throw new ApiException(400, "A payer email is required for Paystack.");
+    }
+
+    private String buildPaystackCallbackUrl(HttpExchange exchange) {
+        String configuredCallback = defaultIfBlank(resolvePaystackCallbackUrl(), "");
+        if (!configuredCallback.isBlank()) {
+            return configuredCallback;
+        }
+
+        String origin = defaultIfBlank(exchange.getRequestHeaders().getFirst("Origin"), "http://localhost:5173");
+        if (origin.contains("?")) {
+            return origin + "&paystack=callback";
+        }
+        if (origin.endsWith("/")) {
+            return origin + "?paystack=callback";
+        }
+        return origin + "/?paystack=callback";
     }
 
     private String buildDashboardJson() {
@@ -417,6 +503,24 @@ public class CarRentalApiServer {
         return parseFlatJson(body);
     }
 
+    private static Map<String, String> parseQuery(String rawQuery) {
+        Map<String, String> query = new LinkedHashMap<>();
+        if (rawQuery == null || rawQuery.isBlank()) {
+            return query;
+        }
+        String[] pairs = rawQuery.split("&");
+        for (String pair : pairs) {
+            if (pair == null || pair.isBlank()) {
+                continue;
+            }
+            String[] keyValue = pair.split("=", 2);
+            String key = decodeUrlComponent(keyValue[0]);
+            String value = keyValue.length > 1 ? decodeUrlComponent(keyValue[1]) : "";
+            query.put(key, value);
+        }
+        return query;
+    }
+
     private static String readRequestBody(HttpExchange exchange) throws IOException {
         try (InputStream input = exchange.getRequestBody()) {
             return new String(input.readAllBytes(), StandardCharsets.UTF_8);
@@ -457,6 +561,38 @@ public class CarRentalApiServer {
             return fallback;
         }
         return value.trim();
+    }
+
+    private static String decodeUrlComponent(String value) {
+        return URLDecoder.decode(value == null ? "" : value, StandardCharsets.UTF_8);
+    }
+
+    private static long toMinorUnits(double amount) {
+        return Math.round(amount * 100.0d);
+    }
+
+    private static String extractBookingIdFromReference(String reference) {
+        int hyphenIndex = reference.indexOf('-');
+        if (hyphenIndex <= 0) {
+            throw new ApiException(400, "Invalid Paystack reference.");
+        }
+        return reference.substring(0, hyphenIndex);
+    }
+
+    private static String resolvePaystackSecretKey() {
+        String value = System.getenv("PAYSTACK_SECRET_KEY");
+        if (value == null || value.isBlank()) {
+            value = System.getProperty("paystack.secret.key", "");
+        }
+        return value == null ? "" : value.trim();
+    }
+
+    private static String resolvePaystackCallbackUrl() {
+        String value = System.getenv("PAYSTACK_CALLBACK_URL");
+        if (value == null || value.isBlank()) {
+            value = System.getProperty("paystack.callback.url", "");
+        }
+        return value == null ? "" : value.trim();
     }
 
     private static int parsePositiveInt(String value, String field) {
@@ -527,6 +663,8 @@ public class CarRentalApiServer {
                 sendJson(exchange, 405, "{\"error\":\"Method Not Allowed\"}");
             } catch (ApiException ex) {
                 sendJson(exchange, ex.statusCode, "{\"error\":\"" + escape(ex.getMessage()) + "\"}");
+            } catch (IOException ex) {
+                sendJson(exchange, 500, "{\"error\":\"" + escape(defaultIfBlank(ex.getMessage(), "Internal server error")) + "\"}");
             }
         }
 

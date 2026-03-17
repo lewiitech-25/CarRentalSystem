@@ -9,6 +9,7 @@ import { auth, db } from './firebase';
 
 function Login({ initialMode = 'login', onBack }) {
   const [mode, setMode] = useState(initialMode);
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
@@ -26,19 +27,19 @@ function Login({ initialMode = 'login', onBack }) {
       setError('');
       setMessage('');
 
-      if (!email || !password) {
+      if (!email || !password || (selectedMode === 'signup' && !name)) {
         setError('Fill in all required fields.');
         return;
       }
 
       if (selectedMode === 'signup') {
-        const derivedName = email.split('@')[0] || 'User';
+        const accountName = name.trim();
         const credentials = await createUserWithEmailAndPassword(auth, email, password);
-        await updateProfile(credentials.user, { displayName: derivedName });
+        await updateProfile(credentials.user, { displayName: accountName });
         await setDoc(
           doc(db, 'users', credentials.user.uid),
           {
-            name: derivedName,
+            name: accountName,
             email,
             role: 'user',
             createdAt: serverTimestamp()
@@ -66,13 +67,22 @@ function Login({ initialMode = 'login', onBack }) {
         <p className="auth-subtext">
           {mode === 'login'
             ? 'Login with your email and password.'
-            : 'New accounts are created as user role. Admin role must be assigned in Firestore.'}
+            : 'Create your account to start booking cars.'}
         </p>
 
         {error && <p className="status error">{error}</p>}
         {message && <p className="status success">{message}</p>}
 
         <form className="auth-form" onSubmit={(e) => e.preventDefault()}>
+          {mode === 'signup' && (
+            <input
+              type="text"
+              placeholder="Full name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+          )}
+
           <input
             type="email"
             placeholder="Email"
