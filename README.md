@@ -42,7 +42,10 @@ From the `CarRentalSysV2` directory:
 
 ```
 
-### Contributing
+### Verification and Validation
+The project follows software engineering best practices for testing:
+- **Component Verification**: Ensures the UI functions correctly based on user roles.
+- **Data Integrity**: Firestore rules ensure only authorized roles can access or modify fleet data.
 
 
 ### License
