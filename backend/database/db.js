@@ -148,6 +148,16 @@ if (userCount === 0) {
     [uuidv4(), 'Nissan',   'X-Trail',    2021, 'SUV',     18000,  'available', 'KDA 450H', 'Grey',   'Automatic', 'Petrol', 5, 'Comfortable crossover with great fuel economy.'],
     [uuidv4(), 'Toyota',   'HiAce',      2019, 'Van',     12000,  'available', 'KBZ 888I', 'White',  'Manual',    'Diesel', 14,'14-seater matatu-style van, ideal for group transfers.'],
     [uuidv4(), 'Ford',     'Ranger',     2022, 'Pickup',  22000,  'maintenance','KDD 200J','Silver', 'Automatic', 'Diesel', 5, 'Double-cab pickup for heavy-duty transport needs.'],
+    [uuidv4(), 'Toyota',   'Vitz',        2018, 'Hatchback', 3000,   'available', 'KDG 123K', 'Pink',   'Automatic', 'Petrol', 5, 'Highly popular and fuel-efficient subcompact hatchback.'],
+    [uuidv4(), 'Honda',    'Fit',         2019, 'Hatchback', 3200,   'available', 'KDF 456L', 'Blue',   'Automatic', 'Hybrid', 5, 'Spacious interior with excellent hybrid fuel economy.'],
+    [uuidv4(), 'Volkswagen', 'Golf',       2017, 'Hatchback', 5500,   'available', 'KDB 789M', 'Black',  'Automatic', 'Petrol', 5, 'Sporty German engineering with premium interior feel.'],
+    [uuidv4(), 'Toyota',   'Prado',       2021, 'SUV',       25000,  'available', 'KDL 001N', 'White',  'Automatic', 'Diesel', 7, 'The gold standard for luxury 4x4 rentals in Kenya.'],
+    [uuidv4(), 'Mitsubishi', 'Pajero',     2015, 'SUV',       15000,  'available', 'KCP 555O', 'Silver', 'Automatic', 'Diesel', 7, 'Rugged off-roader capable of handling tough terrain.'],
+    [uuidv4(), 'Land Rover', 'Defender',   2022, 'SUV',       65000,  'available', 'KDM 999P', 'Green',  'Automatic', 'Diesel', 5, 'Iconic luxury off-roader for high-end safari experiences.'],
+    [uuidv4(), 'Toyota',   'Noah',        2016, 'Van',       8000,   'available', 'KCS 222Q', 'Silver', 'Automatic', 'Petrol', 8, '8-seater family van with sliding doors for easy access.'],
+    [uuidv4(), 'Hyundai',  'Tucson',      2020, 'SUV',       12000,  'available', 'KDE 333R', 'White',  'Automatic', 'Petrol', 5, 'Modern crossover with great safety features and tech.'],
+    [uuidv4(), 'BMW',      'X5',          2021, 'Luxury',    45000,  'available', 'KDJ 444S', 'Black',  'Automatic', 'Petrol', 5, 'High-performance luxury SUV for executive rentals.'],
+    [uuidv4(), 'Isuzu',    'D-Max',       2023, 'Pickup',    20000,  'available', 'KDN 888T', 'White',  'Manual',    'Diesel', 5, 'Brand new double-cab pickup, perfect for site visits.']
   ];
 
   cars.forEach(car => insertCar.run(...car));
