@@ -30,8 +30,8 @@ This repository contains a simple **Car Rental System** implemented in Java as a
    ```bash
    git clone https://github.com/lewiitech-25/CarRentalSystem.git
    ```
-2. Open NetBeans and choose **File → Open Project…**.
-3. Navigate to the cloned folder and select the `CarRentalSysV2` project.
+2. virtual code and choose **File → Open Project…**.
+3. Navigate to the  folder and select the `CarRentalSysV2` project.
 4. Clean and build the project, then run the main class (typically `carrentalsystem.CarRentalSystem`).
 
 **Running from the command line**
