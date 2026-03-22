@@ -28,14 +28,28 @@ public class CarRentalApiServer {
 
     private final DashboardService service;
     private final PaystackGateway paystackGateway;
+    private final OpenAICarRecommendationGateway recommendationGateway;
 
     public CarRentalApiServer(DashboardService service) {
-        this(service, new PaystackGateway(resolvePaystackSecretKey()));
+        this(
+                service,
+                new PaystackGateway(resolvePaystackSecretKey()),
+                new OpenAICarRecommendationGateway(resolveOpenAiApiKey(), resolveOpenAiModel())
+        );
     }
 
     public CarRentalApiServer(DashboardService service, PaystackGateway paystackGateway) {
+        this(service, paystackGateway, new OpenAICarRecommendationGateway(resolveOpenAiApiKey(), resolveOpenAiModel()));
+    }
+
+    public CarRentalApiServer(
+            DashboardService service,
+            PaystackGateway paystackGateway,
+            OpenAICarRecommendationGateway recommendationGateway
+    ) {
         this.service = service;
         this.paystackGateway = paystackGateway;
+        this.recommendationGateway = recommendationGateway;
     }
 
     public static void main(String[] args) throws IOException {
@@ -65,6 +79,7 @@ public class CarRentalApiServer {
         System.out.println("POST /api/bookings/return");
         System.out.println("POST /api/payments");
         System.out.println("GET  /api/payments/verify?reference=...");
+        System.out.println("POST /api/recommend-car");
     }
 
     public void start(int port) throws IOException {
@@ -258,41 +273,105 @@ public class CarRentalApiServer {
             protected String handleGet(HttpExchange exchange) throws IOException {
                 Map<String, String> query = parseQuery(exchange.getRequestURI().getRawQuery());
                 String reference = requireField(query, "reference");
+                long expectedAmount = parsePositiveLong(requireField(query, "expectedAmount"), "expectedAmount");
+                String expectedCurrency = defaultIfBlank(query.get("currency"), "KES");
                 String bookingId = extractBookingIdFromReference(reference);
-
-                DashboardService currentService = getService();
-                Booking booking = currentService.findBookingById(bookingId);
-                if (booking == null) {
-                    throw new ApiException(404, "Booking not found for reference");
-                }
-                if ("Paid".equals(booking.getPaymentStatus())) {
-                    return "{"
-                            + "\"bookingId\":\"" + escape(bookingId) + "\","
-                            + "\"reference\":\"" + escape(reference) + "\","
-                            + "\"status\":\"success\","
-                            + "\"alreadyPaid\":true"
-                            + "}";
-                }
 
                 PaystackGateway.VerifyResult verified = paystackGateway.verifyTransaction(reference);
                 if (!"success".equalsIgnoreCase(verified.getStatus())) {
-                    booking.markPaymentFailed();
                     throw new ApiException(409, "Paystack payment was not successful.");
                 }
-                if (!"KES".equalsIgnoreCase(defaultIfBlank(verified.getCurrency(), "KES"))) {
+                if (!expectedCurrency.equalsIgnoreCase(defaultIfBlank(verified.getCurrency(), expectedCurrency))) {
                     throw new ApiException(409, "Unexpected Paystack currency.");
                 }
-                if (verified.getAmount() != toMinorUnits(booking.getTotalAmount())) {
+                if (verified.getAmount() != expectedAmount) {
                     throw new ApiException(409, "Paystack amount does not match booking total.");
                 }
 
-                currentService.markBookingPaid(bookingId);
                 return "{"
                         + "\"bookingId\":\"" + escape(bookingId) + "\","
                         + "\"reference\":\"" + escape(verified.getReference()) + "\","
                         + "\"status\":\"" + escape(verified.getStatus()) + "\","
                         + "\"channel\":\"" + escape(defaultIfBlank(verified.getChannel(), "unknown")) + "\","
                         + "\"gatewayResponse\":\"" + escape(defaultIfBlank(verified.getGatewayResponse(), "Payment verified")) + "\""
+                        + "}";
+            }
+        });
+
+        server.createContext("/api/recommend-car", new JsonHandler() {
+            @Override
+            protected String handlePost(HttpExchange exchange) throws IOException {
+                String rawBody = readRequestBody(exchange);
+                System.out.println("[recommend-car] raw request body: " + rawBody);
+                Map<String, String> body = parseFlatJson(rawBody);
+                System.out.println("[recommend-car] parsed body keys: " + body.keySet());
+
+                double budget = parsePositiveDouble(requireField(body, "budget"), "budget");
+                int passengers = parsePositiveInt(requireField(body, "passengers"), "passengers");
+                int rentalDuration = parsePositiveInt(requireField(body, "rentalDuration"), "rentalDuration");
+                String tripType = requireField(body, "tripType");
+                String preferredCategory = defaultIfBlank(body.get("preferredCategory"), "Any");
+                String fleetJson = requireField(body, "fleetJson");
+                System.out.println("[recommend-car] parsed values -> budget=" + budget
+                        + ", passengers=" + passengers
+                        + ", rentalDuration=" + rentalDuration
+                        + ", tripType=" + tripType
+                        + ", preferredCategory=" + preferredCategory
+                        + ", fleetJsonLength=" + fleetJson.length());
+
+                List<OpenAICarRecommendationGateway.RecommendationCar> fleet = parseRecommendationFleet(fleetJson);
+                List<OpenAICarRecommendationGateway.RecommendationCar> availableFleet = new ArrayList<>();
+                for (OpenAICarRecommendationGateway.RecommendationCar car : fleet) {
+                    if (car != null) {
+                        availableFleet.add(car);
+                    }
+                }
+                System.out.println("[recommend-car] parsed fleet count=" + fleet.size()
+                        + ", availableFleet count=" + availableFleet.size());
+                if (!availableFleet.isEmpty()) {
+                    OpenAICarRecommendationGateway.RecommendationCar firstCar = availableFleet.get(0);
+                    System.out.println("[recommend-car] first fleet car -> carId=" + firstCar.getCarId()
+                            + ", make=" + firstCar.getMake()
+                            + ", model=" + firstCar.getModel()
+                            + ", category=" + firstCar.getCategory()
+                            + ", pricePerDay=" + firstCar.getPricePerDay()
+                            + ", seats=" + firstCar.getSeats());
+                }
+
+                if (availableFleet.isEmpty()) {
+                    throw new ApiException(400, "No available cars were provided for recommendation.");
+                }
+
+                OpenAICarRecommendationGateway.RecommendationRequest request =
+                        new OpenAICarRecommendationGateway.RecommendationRequest(
+                                budget,
+                                passengers,
+                                tripType,
+                                rentalDuration,
+                                preferredCategory,
+                                availableFleet
+                        );
+
+                OpenAICarRecommendationGateway.RecommendationResult recommendation;
+                try {
+                    System.out.println("[recommend-car] starting OpenAI recommendation request");
+                    recommendation = recommendationGateway.recommend(request);
+                    System.out.println("[recommend-car] OpenAI response received -> carId="
+                            + recommendation.getCarId() + ", reason=" + recommendation.getReason());
+                } catch (IOException ex) {
+                    System.out.println("[recommend-car] OpenAI path failed, using local fallback: " + ex.getMessage());
+                    recommendation = recommendCarLocally(request, availableFleet);
+                    System.out.println("[recommend-car] local fallback selected -> carId="
+                            + recommendation.getCarId() + ", reason=" + recommendation.getReason());
+                }
+                if (!fleetContainsCarId(availableFleet, recommendation.getCarId())) {
+                    throw new ApiException(502, "OpenAI returned a carId that was not in the provided fleet.");
+                }
+                System.out.println("[recommend-car] returned carId validated successfully");
+
+                return "{"
+                        + "\"carId\":\"" + escape(recommendation.getCarId()) + "\","
+                        + "\"reason\":\"" + escape(recommendation.getReason()) + "\""
                         + "}";
             }
         });
@@ -306,7 +385,6 @@ public class CarRentalApiServer {
     }
 
     private static DashboardService createDemoService() {
-        PaymentGateway gateway = new PaymentGateway("Gateway 1", "Gateway API");
         Cardatabase database = new Cardatabase();
 
         List<Car> allCars = new ArrayList<>();
@@ -324,25 +402,6 @@ public class CarRentalApiServer {
         allCars.add(car1);
         allCars.add(car2);
         allCars.add(car3);
-
-        Customer cust1 = new Customer("Customer1", "Mohammed Salah", "MoSalah@gmail.com", "0735092654", "DL1-9860");
-        allCustomers.add(cust1);
-
-        Date today = new Date();
-        Date threeDaysLater = new Date(today.getTime() + (3L * DAY_MS));
-
-        Booking booking1 = Booking.createBooking(cust1, car1, today, threeDaysLater);
-        booking1.calculateTotal(car1.getPricePerDay());
-
-        Payment payment = gateway.makePayment(booking1, "Credit Card");
-        boolean paymentSuccessful = gateway.processPayment(payment);
-        if (paymentSuccessful) {
-            booking1.confirmBooking();
-            booking1.markAsPaid();
-            database.updateCarStatus(car1.getCarId(), "Rented");
-        }
-
-        allBookings.add(booking1);
         return new DashboardService(allCars, allCustomers, allBookings);
     }
 
@@ -579,12 +638,201 @@ public class CarRentalApiServer {
         return reference.substring(0, hyphenIndex);
     }
 
+    private static boolean fleetContainsCarId(List<OpenAICarRecommendationGateway.RecommendationCar> fleet, String carId) {
+        if (carId == null || carId.isBlank()) {
+            return false;
+        }
+        for (OpenAICarRecommendationGateway.RecommendationCar car : fleet) {
+            if (carId.equals(car.getCarId())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static OpenAICarRecommendationGateway.RecommendationResult recommendCarLocally(
+            OpenAICarRecommendationGateway.RecommendationRequest request,
+            List<OpenAICarRecommendationGateway.RecommendationCar> fleet
+    ) {
+        OpenAICarRecommendationGateway.RecommendationCar bestCar = null;
+        double bestScore = Double.NEGATIVE_INFINITY;
+
+        for (OpenAICarRecommendationGateway.RecommendationCar car : fleet) {
+            double score = scoreRecommendationCar(request, car);
+            if (bestCar == null || score > bestScore) {
+                bestCar = car;
+                bestScore = score;
+            }
+        }
+
+        if (bestCar == null) {
+            throw new ApiException(400, "No available cars were provided for recommendation.");
+        }
+
+        return new OpenAICarRecommendationGateway.RecommendationResult(
+                bestCar.getCarId(),
+                buildLocalRecommendationReason(request, bestCar)
+        );
+    }
+
+    private static double scoreRecommendationCar(
+            OpenAICarRecommendationGateway.RecommendationRequest request,
+            OpenAICarRecommendationGateway.RecommendationCar car
+    ) {
+        double score = 0.0d;
+
+        if (car.getPricePerDay() <= request.getBudget()) {
+            score += 45.0d;
+            score += Math.max(0.0d, 15.0d - ((request.getBudget() - car.getPricePerDay()) / 1000.0d));
+        } else {
+            score -= 25.0d + ((car.getPricePerDay() - request.getBudget()) / 500.0d);
+        }
+
+        if (car.getSeats() >= request.getPassengers()) {
+            score += 20.0d;
+            score += Math.max(0.0d, 6.0d - (car.getSeats() - request.getPassengers()));
+        } else {
+            score -= 40.0d;
+        }
+
+        String preferredCategory = defaultIfBlank(request.getPreferredCategory(), "Any");
+        if (!"Any".equalsIgnoreCase(preferredCategory)) {
+            if (car.getCategory().equalsIgnoreCase(preferredCategory)) {
+                score += 28.0d;
+            } else if (car.getCategory().toLowerCase().contains(preferredCategory.toLowerCase())
+                    || preferredCategory.toLowerCase().contains(car.getCategory().toLowerCase())) {
+                score += 16.0d;
+            } else {
+                score -= 6.0d;
+            }
+        }
+
+        String tripType = defaultIfBlank(request.getTripType(), "").toLowerCase();
+        String category = defaultIfBlank(car.getCategory(), "").toLowerCase();
+
+        if (tripType.contains("family") || tripType.contains("group") || tripType.contains("road trip")) {
+            if (category.contains("suv") || category.contains("pickup")) {
+                score += 12.0d;
+            }
+        }
+        if (tripType.contains("city") || tripType.contains("commute") || tripType.contains("work")) {
+            if (category.contains("sedan") || category.contains("hatchback")) {
+                score += 12.0d;
+            }
+        }
+        if (tripType.contains("luxury") || tripType.contains("business") || tripType.contains("executive")) {
+            if (category.contains("luxury")) {
+                score += 12.0d;
+            }
+        }
+
+        if (request.getRentalDuration() >= 7 && car.getPricePerDay() <= request.getBudget()) {
+            score += 6.0d;
+        }
+
+        return score;
+    }
+
+    private static String buildLocalRecommendationReason(
+            OpenAICarRecommendationGateway.RecommendationRequest request,
+            OpenAICarRecommendationGateway.RecommendationCar car
+    ) {
+        StringBuilder reason = new StringBuilder();
+        reason.append(car.getMake()).append(" ").append(car.getModel())
+                .append(" is the strongest match from the currently available fleet");
+
+        if (car.getPricePerDay() <= request.getBudget()) {
+            reason.append(", stays within the stated budget");
+        } else {
+            reason.append(", is the closest available match even though it stretches the stated budget");
+        }
+
+        if (car.getSeats() >= request.getPassengers()) {
+            reason.append(", and fits ").append(request.getPassengers()).append(" passenger");
+            if (request.getPassengers() != 1) {
+                reason.append("s");
+            }
+        }
+
+        String preferredCategory = defaultIfBlank(request.getPreferredCategory(), "Any");
+        if (!"Any".equalsIgnoreCase(preferredCategory) && car.getCategory().equalsIgnoreCase(preferredCategory)) {
+            reason.append(". It also matches the preferred category");
+        } else {
+            reason.append(".");
+        }
+
+        return reason.toString();
+    }
+
+    private static List<OpenAICarRecommendationGateway.RecommendationCar> parseRecommendationFleet(String fleetJson) {
+        List<OpenAICarRecommendationGateway.RecommendationCar> cars = new ArrayList<>();
+        if (fleetJson == null || fleetJson.isBlank()) {
+            return cars;
+        }
+
+        Matcher objectMatcher = Pattern.compile("\\{([^{}]+)\\}").matcher(fleetJson);
+        while (objectMatcher.find()) {
+            Map<String, String> carMap = parseFlatJson("{" + objectMatcher.group(1) + "}");
+            if (!carMap.containsKey("carId")) {
+                System.out.println("[recommend-car] skipping malformed fleet object: " + carMap);
+                continue;
+            }
+            String status = defaultIfBlank(carMap.get("status"), "Available");
+            if (!"Available".equalsIgnoreCase(status)) {
+                continue;
+            }
+
+            String carId = requireField(carMap, "carId");
+            String make = defaultIfBlank(carMap.get("make"), "Unknown");
+            String model = defaultIfBlank(carMap.get("model"), "Unknown");
+            String category = defaultIfBlank(carMap.get("category"), "Uncategorized");
+            double pricePerDay = parsePositiveDouble(defaultIfBlank(carMap.get("pricePerDay"), "1"), "pricePerDay");
+            int seats = parseOptionalPositiveInt(carMap.get("seats"), 4);
+
+            cars.add(new OpenAICarRecommendationGateway.RecommendationCar(
+                    carId,
+                    make,
+                    model,
+                    category,
+                    pricePerDay,
+                    seats
+            ));
+        }
+
+        return cars;
+    }
+
     private static String resolvePaystackSecretKey() {
         String value = System.getenv("PAYSTACK_SECRET_KEY");
         if (value == null || value.isBlank()) {
             value = System.getProperty("paystack.secret.key", "");
         }
+        if (value == null || value.isBlank()) {
+            value = EnvFileConfig.get("PAYSTACK_SECRET_KEY");
+        }
         return value == null ? "" : value.trim();
+    }
+
+    private static String resolveOpenAiApiKey() {
+        String value = System.getenv("OPENAI_API_KEY");
+        if (value == null || value.isBlank()) {
+            value = System.getProperty("openai.api.key", "");
+        }
+        if (value == null || value.isBlank()) {
+            value = EnvFileConfig.get("OPENAI_API_KEY");
+        }
+        return value == null ? "" : value.trim();
+    }
+
+    private static String resolveOpenAiModel() {
+        String value = System.getenv("OPENAI_MODEL");
+        if (value == null || value.isBlank()) {
+            value = System.getProperty("openai.model", "o3-mini");
+        }
+        if (value == null || value.isBlank()) {
+            value = EnvFileConfig.get("OPENAI_MODEL");
+        }
+        return value == null ? "o3-mini" : value.trim();
     }
 
     private static String resolvePaystackCallbackUrl() {
@@ -592,12 +840,42 @@ public class CarRentalApiServer {
         if (value == null || value.isBlank()) {
             value = System.getProperty("paystack.callback.url", "");
         }
+        if (value == null || value.isBlank()) {
+            value = EnvFileConfig.get("PAYSTACK_CALLBACK_URL");
+        }
         return value == null ? "" : value.trim();
     }
 
     private static int parsePositiveInt(String value, String field) {
         try {
             int parsed = Integer.parseInt(value.trim());
+            if (parsed <= 0) {
+                throw new ApiException(400, field + " must be greater than 0");
+            }
+            return parsed;
+        } catch (NumberFormatException ex) {
+            throw new ApiException(400, "Invalid number for " + field);
+        }
+    }
+
+    private static int parseOptionalPositiveInt(String value, int fallback) {
+        if (value == null || value.isBlank()) {
+            return fallback;
+        }
+        try {
+            int parsed = Integer.parseInt(value.trim());
+            if (parsed <= 0) {
+                return fallback;
+            }
+            return parsed;
+        } catch (NumberFormatException ex) {
+            return fallback;
+        }
+    }
+
+    private static long parsePositiveLong(String value, String field) {
+        try {
+            long parsed = Long.parseLong(value.trim());
             if (parsed <= 0) {
                 throw new ApiException(400, field + " must be greater than 0");
             }
@@ -662,9 +940,14 @@ public class CarRentalApiServer {
                 }
                 sendJson(exchange, 405, "{\"error\":\"Method Not Allowed\"}");
             } catch (ApiException ex) {
+                ex.printStackTrace();
                 sendJson(exchange, ex.statusCode, "{\"error\":\"" + escape(ex.getMessage()) + "\"}");
             } catch (IOException ex) {
+                ex.printStackTrace();
                 sendJson(exchange, 500, "{\"error\":\"" + escape(defaultIfBlank(ex.getMessage(), "Internal server error")) + "\"}");
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                sendJson(exchange, 500, "{\"error\":\"" + escape(defaultIfBlank(ex.getMessage(), ex.getClass().getSimpleName())) + "\"}");
             }
         }
 

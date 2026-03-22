@@ -5,6 +5,7 @@ import {
   updateProfile
 } from 'firebase/auth';
 import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
+import driveDeskLogo from './assets/drive-desk.png';
 import { auth, db } from './firebase';
 
 function Login({ initialMode = 'login', onBack }) {
@@ -62,7 +63,10 @@ function Login({ initialMode = 'login', onBack }) {
   return (
     <main className="auth-page">
       <section className="auth-card">
-        <p className="marketing-logo">DriveDesk</p>
+        <div className="brand-lockup auth-logo-lockup">
+          <img src={driveDeskLogo} alt="DriveDesk logo" className="brand-logo" />
+          <p className="marketing-logo">DriveDesk</p>
+        </div>
         <h2>{mode === 'login' ? 'Sign in' : 'Create account'}</h2>
         <p className="auth-subtext">
           {mode === 'login'
